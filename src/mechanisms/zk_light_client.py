@@ -11,60 +11,108 @@ from core.evidence import ZKLightClientEvidence
 from core.state import StateManager
 from mechanisms.base import Mechanism
 
+# Use the global ZK verifier defined in helper.crypto
+from helper.crypto import GlobalZkVerifier
+
 
 class ZkLightClientMechanism(Mechanism):
     """
-    ZK light-client style mechanism implementation.
+       ZK light-client mechanism implementation.
 
-    Responsibilities:
-      - Wrap an application-level event `app_event` into a cross-chain
-        Message `m`;
-      - Construct a source-header view `h_s` and a corresponding
-        ZKLightClientEvidence `e`:
-          * `proof`: a (simulated) ZK proof object;
-          * `public_inputs`: the committed header / payload data the proof
-            is supposed to attest to;
-      - Write runtime state into σ (StateManager):
-          * replay / Unique state via mark_message_seen();
-          * per-route ordering via advance_seq(route, seq);
-          * (optionally) inflight tracking via add_inflight().
+       Native semantics (real-world model):
+         In production systems, a ZK light client works by embedding a
+         cryptographic proof system (SNARK/STARK) inside the destination chain.
+         The source chain periodically commits its consensus facts
+         (e.g., block header, state root, storage slots, validator set hash),
+         and a prover circuit generates a succinct proof attesting that:
 
-    In a real deployment, the ZK proof would be generated off-chain by a
-    prover circuit, and verified on the destination chain by a verifier
-    contract. Here we only model the *shape* of the objects and keep the
-    cryptography as a deterministic hash-based stub so that
-    Authentic(ZK) can re-check consistency via GlobalZkVerifier.
-    """
+            - the header is valid under the source chain’s consensus rules;
+            - the state_root is correctly derived from the execution state;
+            - optional: a Merkle opening confirms that a particular bridge
+              storage entry or event log is included under that state_root.
+
+         The verifier contract on the destination chain checks:
+            verify(proof, public_inputs) == True
+
+         If verification succeeds, the destination chain safely treats the
+         referenced source facts as *final* and *canonical*, enabling strong
+         cross-chain predicates like Authentic, Final, and Contain.
+
+       Why we enrich it in this framework:
+         The real ZK LC gives us strict cryptographic guarantees, but
+         implementations differ widely in:
+            - which parts of the header are committed;
+            - whether storage proofs or event proofs are also included;
+            - how Merkle structures or state transitions are exposed;
+            - naming conventions and field structures;
+            - whether a per-message commitment exists or only per-header proofs.
+
+         To unify semantics across all mechanism families (§3.1), we provide
+         an enriched ZK LC model that:
+            - exposes `public_inputs` in a structured and inspectable form;
+            - includes message metadata (seq, channel, timestamp) in the
+              committed proof inputs, so that DomainBind / Unique / Timely
+              predicates can be evaluated consistently across families;
+            - optionally attaches a Merkle-contain structure through
+              StateManager, enabling Contain(m, h_s) for messages and events;
+            - matches GlobalZkVerifier’s commitment rule so that Authentic(e)
+              can be uniformly checked inside our Authorizer.
+
+       What is changed or enriched compared to a native ZK LC:
+         - We explicitly commit to both header fields and message metadata,
+           even though real ZK LCs typically do not commit to per-message data.
+         - We include a payload_hash so that the proof ties the message payload
+           to the header’s state context.
+         - We support optional `zk_extra`, allowing experiments to insert
+           additional public inputs, matching different ZK LC designs (Ethereum,
+           Mina, Plonky2, IBC-via-ZK, etc.).
+         - We use a deterministic commitment (SHA256(canonical(public_inputs)))
+           instead of real SNARK pairings or FRI/STARK checks; this allows
+           Authentic(e) to be replayed deterministically in experiments.
+         - We allow StateManager to mark inflight headers, enabling unified
+           implementation of Final(m, e) and Contain(m, h_s), even though
+           many native ZK LCs expose only header verification without per-event
+           Merkle paths.
+
+       Summary:
+         Native ZK light clients prove consensus and sometimes storage/state
+         inclusion. Our enriched version adds message-level structure and
+         uniform predicate support so that:
+            - Authentic(e), HdrRef(e), Final, Contain, DomainBind, Unique,
+              Timely can all be evaluated consistently across families.
+         The cryptography remains simplified but the logical semantics match
+         real-world ZK LC behavior closely enough for threat modeling and
+         correctness reasoning.
+       """
 
     family = VerificationFamily.ZK_LIGHT_CLIENT
 
-    # ---- helpers: canonical JSON + simple commitments ----
-
+    # ----------------------------------------------------------------------
+    # Helper: canonical JSON (same style as MPC/TSS mechanism)
+    # ----------------------------------------------------------------------
     @staticmethod
     def _canonical_json(obj: Any) -> str:
         """
-        Convert an object (possibly a pydantic model) into a canonical JSON
-        string, with stable key ordering and no extra whitespace.
+        Convert an object (possibly a pydantic model) into canonical JSON:
+          - pydantic -> dict;
+          - json.dumps with sorted keys and no extra whitespace.
 
-        This mirrors the style used in the MPC mechanism so that hashes are
-        reproducible across runs.
+        This ensures stable hashing across runs and keeps consistency with MPC/TSS.
         """
         data = obj
         if hasattr(obj, "model_dump"):
-            # pydantic v2
-            data = obj.model_dump(mode="json")  # type: ignore[call-arg]
+            data = obj.model_dump(mode="json")
         elif hasattr(obj, "dict"):
-            # pydantic v1
-            data = obj.dict()  # type: ignore[call-arg]
-
+            data = obj.dict()
         return json.dumps(data, sort_keys=True, separators=(",", ":"))
 
     @staticmethod
     def _sha256_hex(s: str) -> str:
         return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
-    # ---- Mechanism interface ----
-
+    # ----------------------------------------------------------------------
+    # Main mechanism interface: convert app_event → (Message, Evidence)
+    # ----------------------------------------------------------------------
     def build_message_and_evidence(
         self,
         *,
@@ -74,29 +122,10 @@ class ZkLightClientMechanism(Mechanism):
         state: StateManager,
         extra: Dict[str, Any] | None = None,
     ) -> Tuple[Message, ZKLightClientEvidence]:
-        """
-        Package an application event `app_event` into (m, e) for the
-        ZK light-client family, and update runtime σ.
 
-        Expected `app_event` fields (informal contract):
-          - "payload": dict          → application-level payload
-          - "seq": int               → message sequence number
-          - "timestamp": int         → source-chain timestamp
-          - "channel": str           → channel / route identifier
-          - "height": int            → source header height
-          - "state_root": str (opt)  → state root committed by the header
-          - "header_hash": str (opt) → block / header hash on the source chain
-          - "zk_extra": dict (opt)   → extra info to be embedded into
-                                       public_inputs if desired
-
-        Notes:
-          - This method does *not* attempt to validate the header; it merely
-            constructs the objects. Authentic(e) will later call a
-            protocol-native ZK verifier to check (proof, public_inputs).
-          - We treat ZK as structurally capable of providing Final / Contain
-            semantics, but the actual predicates will depend on StateManager’s
-            header/state view.
-        """
+        # ------------------------------------------------------------------
+        # Expected fields from app_event (same convention as MPC/TSS)
+        # ------------------------------------------------------------------
         seq = app_event.get("seq", 1)
         timestamp = app_event.get("timestamp", 0)
         channel = app_event.get("channel", "default")
@@ -109,15 +138,16 @@ class ZkLightClientMechanism(Mechanism):
 
         route = (src_chain_id, dst_chain_id, channel)
 
-        # --------------------------------------------------
+        # ------------------------------------------------------------------
         # 1. Construct message m
-        # --------------------------------------------------
+        # ------------------------------------------------------------------
         meta = MessageMeta(
             seq=seq,
-            ttl=None,           # TTL, if used, is managed at Timely predicate
+            ttl=None,           # TTL, if needed, is enforced by the Timely predicate
             timestamp=timestamp,
             channel=channel,
         )
+
         m = Message(
             src=src_chain_id,
             dst=dst_chain_id,
@@ -125,9 +155,9 @@ class ZkLightClientMechanism(Mechanism):
             meta=meta,
         )
 
-        # --------------------------------------------------
-        # 2. Construct source header h_s
-        # --------------------------------------------------
+        # ------------------------------------------------------------------
+        # 2. Construct the source-chain header h_s
+        # ------------------------------------------------------------------
         header = Header(
             chain_id=src_chain_id,
             height=height,
@@ -135,17 +165,18 @@ class ZkLightClientMechanism(Mechanism):
             hash=header_hash,
         )
 
-        # --------------------------------------------------
-        # 3. Build public_inputs (without commitment) and dummy ZK proof
-        # --------------------------------------------------
-        # In a real system, public_inputs must match exactly what the on-chain
-        # verifier contract expects (header hash, slot, state root, etc.).
+        # ------------------------------------------------------------------
+        # 3. Build public_inputs (before adding commitment)
         #
-        # For our framework, we:
-        #   - include header (as dict),
-        #   - include message meta (as dict),
-        #   - commit to a hash of the payload,
-        #   - embed any extra hints under "zk_extra".
+        # In a real ZK LC, public_inputs must contain exactly what the
+        # on-chain verifier will check (header hash, slot, state root...).
+        #
+        # In this framework, we commit to:
+        #     - header (as a plain dict),
+        #     - message meta (as a plain dict),
+        #     - SHA256 hash of the payload,
+        #     - optionally extra fields under "zk_extra".
+        # ------------------------------------------------------------------
         header_json = self._canonical_json(header)
         meta_json = self._canonical_json(meta)
         payload_json = self._canonical_json(payload)
@@ -154,41 +185,51 @@ class ZkLightClientMechanism(Mechanism):
 
         public_inputs: Dict[str, Any] = {
             "family": self.family.value,
-            "header": json.loads(header_json),   # header as a plain dict
-            "meta": json.loads(meta_json),       # meta as a plain dict
+            "header": json.loads(header_json),
+            "meta": json.loads(meta_json),
             "payload_hash": payload_hash,
             "zk_extra": zk_extra,
-            # NOTE: we will add "commitment" below, after computing it.
+            # "commitment" is added below after computing it.
         }
 
-        # Compute a commitment that matches GlobalZkVerifier’s semantics:
-        #   - take public_inputs WITHOUT the "commitment" field,
-        #   - canonical JSON (sorted keys, no whitespace),
-        #   - SHA-256 → hex string.
-        pi_for_commit = dict(public_inputs)
-        # ensure there is no leftover "commitment" key
-        pi_for_commit.pop("commitment", None)
+        # ------------------------------------------------------------------
+        # 4. Compute commitment following GlobalZkVerifier's semantics:
+        #       commitment = SHA256(canonical(public_inputs_without_commitment))
+        #
+        # The verifier will recompute the same value for validation.
+        # ------------------------------------------------------------------
+        pi_no_commit = dict(public_inputs)
+        pi_no_commit.pop("commitment", None)
 
-        payload_for_commit = json.dumps(
-            pi_for_commit,
+        canonical = json.dumps(
+            pi_no_commit,
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
         )
-        commitment = self._sha256_hex(payload_for_commit)
 
-        # Attach commitment to public_inputs so that GlobalZkVerifier can
-        # cross-check both:
-        #   - public_inputs["commitment"] == recomputed_commitment
-        #   - proof["commitment"] == recomputed_commitment
+        commitment = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+        # Attach the commitment to public_inputs so that GlobalZkVerifier
+        # can cross-check both public_inputs and proof.
         public_inputs["commitment"] = commitment
 
-        # Our dummy proof just carries the same commitment.
+        # ------------------------------------------------------------------
+        # 5. Construct the proof object
+        #
+        # A real ZK proof is a structured object. In this framework, the
+        # unified rule is:
+        #       proof["commitment"] == public_inputs["commitment"]
+        #
+        # GlobalZkVerifier.verify() will validate it accordingly.
+        # ------------------------------------------------------------------
         proof: Dict[str, Any] = {
-            "scheme": "dummy-zk-hash",
-            "commitment": commitment,
+            "commitment": commitment
         }
 
+        # ------------------------------------------------------------------
+        # 6. Construct Evidence e
+        # ------------------------------------------------------------------
         e = ZKLightClientEvidence(
             family=self.family,
             proof=proof,
@@ -196,5 +237,6 @@ class ZkLightClientMechanism(Mechanism):
             header=header,
             meta=extra or {},
         )
+
 
         return m, e

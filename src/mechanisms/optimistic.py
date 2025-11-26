@@ -166,26 +166,4 @@ class OptimisticMechanism(Mechanism):
             meta=extra or {},
         )
 
-        # --------------------------------------------------
-        # 7. Update runtime σ (StateManager)
-        # --------------------------------------------------
-
-        # 7.1 replay / Unique state
-        key = MessageKey.from_message(m)
-        state.mark_message_seen(key)
-
-        # 7.2 inflight set
-        #     For optimistic mechanisms, containment is defined at the level
-        #     of "claim accepted after dispute window". We still record the
-        #     (m, header) pair as inflight so that Contain / Final predicates
-        #     can reason about current status if needed.
-        if header is not None:
-            state.add_inflight(key, header)
-
-        # 7.3 per-route sequence / ordering
-        state.advance_seq(route, seq)
-
-        # --------------------------------------------------
-        # 8. Return (m, e)
-        # --------------------------------------------------
         return m, e
