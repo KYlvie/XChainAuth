@@ -15,7 +15,7 @@ Mechanism:
       * constructs Message m
       * obtains a header h_s via ExperimentalStateManager / SimulationChain
         (get_header_view), or falls back to app_event fields
-      * updates runtime σ:
+      * updates evidenceLayer σ:
             - mark_message_seen(MessageKey.from_message(m))
             - add_inflight(key, header)
             - advance_seq(route, seq)
@@ -84,7 +84,7 @@ class NativeLightClientThreat1InclusionScenario(ThreatScenario):
       - ATTACK:
           • Attacker forges a different message m_attack that was never
             recorded as inflight under the same h_s.
-          • They re-use the same header (and evidence shape), but σ_runtime
+          • They re-use the same header (and runtimeLayer shape), but σ_runtime
             does not contain inflight(m_attack, h_s).
           • Contain(m, σ) should accept SAFE and reject ATTACK.
 
@@ -183,7 +183,7 @@ class NativeLightClientThreat2DomainMisbindScenario(ThreatScenario):
             σ_runtime.DomainOK, e.g. ("chain-A", "chain-B", "chan-1").
 
       - ATTACK:
-          • An attacker reuses the same evidence e_safe (same header h_s)
+          • An attacker reuses the same runtimeLayer e_safe (same header h_s)
             but changes the routing domain of the message to an unpermitted
             route (e.g. dst="chain-C").
           • Authentic(e) may still succeed, but DomainOK(m, σ_runtime)
@@ -237,7 +237,7 @@ class NativeLightClientThreat2DomainMisbindScenario(ThreatScenario):
             state=state,
         )
 
-        # ATTACK: change dst to chain-C, reusing same evidence
+        # ATTACK: change dst to chain-C, reusing same runtimeLayer
         meta_attack = MessageMeta(
             seq=m_safe.meta.seq,
             ttl=m_safe.meta.ttl,
@@ -441,7 +441,7 @@ class NativeLightClientThreat5TimelinessScenario(ThreatScenario):
           • m_safe carries a TTL (meta.ttl) such that, at the evaluation
             time `now`, Timely(m, e, now) holds.
       - ATTACK:
-          • m_late uses the same basic message / evidence shape, but its
+          • m_late uses the same basic message / runtimeLayer shape, but its
             TTL is too small, so at the same `now` it has expired.
 
     In the experiment runner, `now` is typically fixed to

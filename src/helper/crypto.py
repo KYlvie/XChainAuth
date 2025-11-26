@@ -175,7 +175,7 @@ class GlobalZkVerifier:
         verifier *contract* deployed on some chain, or by a fixed
         verification function baked into a light-client module.
       * The application / authorizer does *not* get to choose or
-        override the verifier at runtime; it is part of the mechanism.
+        override the verifier at evidenceLayer; it is part of the mechanism.
 
     In our framework:
       * GlobalZkVerifier is a protocol-internal component.

@@ -46,7 +46,7 @@ def run_single_family_threat(config: RunConfig) -> None:
     scenarios = FAMILY_SCENARIOS[config.family]
     scenario = scenarios[config.threat_id]
 
-    # 2) StateManager (source-chain mirror + destination runtime state)
+    # 2) StateManager (source-chain mirror + destination evidenceLayer state)
     state = make_experimental_state_manager_for_family(config.family)
 
     # 3) Let the threat scenario generate (m, e, label) trace on this state

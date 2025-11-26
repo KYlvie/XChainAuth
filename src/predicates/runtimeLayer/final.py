@@ -46,7 +46,7 @@ class FinalPredicate(Predicate):
 
         * MPC/TSS notary bridges:
             - The committee *may* internally wait for "enough confirmations",
-              but the evidence exposed to the destination chain does not
+              but the runtimeLayer exposed to the destination chain does not
               carry a verifiable chain-level finality proof. In our semantics,
               MPC/TSS cannot natively satisfy a strong Final(h_s) predicate.
 
@@ -88,7 +88,7 @@ class FinalPredicate(Predicate):
                 name=self.name,
                 ok=True,
                 reason=(
-                    "Final predicate is a placeholder; evidence does not expose "
+                    "Final predicate is a placeholder; runtimeLayer does not expose "
                     "a header (HdrRef(e) = ⊥), so no finality checks are applied."
                 ),
                 metadata={

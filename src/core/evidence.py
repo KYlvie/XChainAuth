@@ -10,9 +10,9 @@ JsonDict = Dict[str, Any]
 
 class Evidence(BaseModel):
     """
-    Abstract base class for cross-chain evidence e.
+    Abstract base class for cross-chain runtimeLayer e.
 
-    In the unified semantics (§4.2), an evidence object e is the *mechanism-side
+    In the unified semantics (§4.2), an runtimeLayer object e is the *mechanism-side
     justification* that allows the Authorizer on the destination chain to decide
     whether a message m is safe to accept.  It encapsulates whatever the specific
     mechanism family (MPC/TSS, Optimistic, ZK light client, native LC, etc.)
@@ -20,7 +20,7 @@ class Evidence(BaseModel):
 
     Real-world interpretation
     -------------------------
-    In deployed cross-chain systems, “evidence” is not a single standardized
+    In deployed cross-chain systems, “runtimeLayer” is not a single standardized
     structure. Instead, it is produced organically by the mechanism family:
 
       • MPC/TSS (notary bridges):
@@ -46,8 +46,8 @@ class Evidence(BaseModel):
           by the LC contract/module.
 
       • HTLC / Application Workflow:
-          No cross-chain cryptographic evidence is exported. Trust is enforced
-          through runtime behaviour (timeouts, hash-lock revelations, workflow
+          No cross-chain cryptographic runtimeLayer is exported. Trust is enforced
+          through evidenceLayer behaviour (timeouts, hash-lock revelations, workflow
           order), so e is essentially an empty placeholder.
 
     Why unify these as `Evidence`?
@@ -57,12 +57,12 @@ class Evidence(BaseModel):
     two minimal semantic requirements on e:
 
       (1) It belongs to exactly one verification family.
-          This determines which cryptographic assumptions and runtime rules apply.
+          This determines which cryptographic assumptions and evidenceLayer rules apply.
 
       (2) It may optionally expose a source-header reference via HdrRef(e).
-          Families with header-level evidence (MPC/TSS, OPT, ZK LC, NLC) may
+          Families with header-level runtimeLayer (MPC/TSS, OPT, ZK LC, NLC) may
           support predicates like HdrRef, Final, Contain, etc.  Families lacking
-          such evidence simply return None.
+          such runtimeLayer simply return None.
 
     All other fields (attestations, proofs, roots, context, metadata) are
     family-specific and intentionally left to subclasses. They are *not*
@@ -75,7 +75,7 @@ class Evidence(BaseModel):
 
     family: VerificationFamily = Field(
         ...,
-        description="Verification family this evidence belongs to.",
+        description="Verification family this runtimeLayer belongs to.",
     )
 
     # Family-specific / implementation-specific metadata.
@@ -95,8 +95,8 @@ class Evidence(BaseModel):
     # --- Unified interface for HdrRef(e) ---
     def hdr_ref(self) -> Optional[Header]:
         """
-        HdrRef(e): return the source header h_s referred to by this evidence,
-        if any. Families that do not expose header-level evidence return None.
+        HdrRef(e): return the source header h_s referred to by this runtimeLayer,
+        if any. Families that do not expose header-level runtimeLayer return None.
 
         This corresponds to the HdrRef(e) predicate input in the paper.
         """
@@ -173,14 +173,14 @@ class MPCEvidence(Evidence):
 
     header: Header = Field(
         ...,
-        description="Source-chain header h_s referenced by this evidence.",
+        description="Source-chain header h_s referenced by this runtimeLayer.",
     )
 
     def hdr_ref(self) -> Optional[Header]:
         return self.header
 
 
-# ========== OPTIMISTIC: evidence with a verifiable commitment ==========
+# ========== OPTIMISTIC: runtimeLayer with a verifiable commitment ==========
 
 class OptimisticClaim(BaseModel):
     """
@@ -228,7 +228,7 @@ class OptimisticEvidence(Evidence):
 
     Semantics:
       - Authentic(e) checks that “an authorized proposer’s signature is valid”.
-      - Timely / Final and related runtime predicates ensure that the dispute
+      - Timely / Final and related evidenceLayer predicates ensure that the dispute
         window has expired, no valid fraud proof appeared, and thus the claim
         becomes accepted as correct.
     """
@@ -283,7 +283,7 @@ class OptimisticEvidence(Evidence):
         return self.header
 
 
-# ========== ZK Light Client: ZK evidence with circuit identifiers ==========
+# ========== ZK Light Client: ZK runtimeLayer with circuit identifiers ==========
 
 class ZKLightClientEvidence(Evidence):
     """
@@ -330,13 +330,13 @@ class ZKLightClientEvidence(Evidence):
         return self.header
 
 
-# ========== Native Light Client: evidence with finality view ==========
+# ========== Native Light Client: runtimeLayer with finality view ==========
 
 class NativeLightClientEvidence(Evidence):
     """
     Evidence for native light-client based verification.
 
-    In many systems, the “evidence” that the Authorizer sees is simply
+    In many systems, the “runtimeLayer” that the Authorizer sees is simply
     “a header that the light client has already validated”, optionally
     accompanied by explicit finality information:
 
@@ -373,8 +373,8 @@ class NativeLightClientEvidence(Evidence):
         return self.header
 
 
-# Families that expose header+proof style cross-chain evidence and can
-# support Authentic/HdrRef/DomainBind/ContextOK at the evidence layer.
+# Families that expose header+proof style cross-chain runtimeLayer and can
+# support Authentic/HdrRef/DomainBind/ContextOK at the runtimeLayer layer.
 FAMILIES_WITH_HEADER_EVIDENCE = {
     VerificationFamily.MPC_TSS,
     VerificationFamily.OPTIMISTIC,
@@ -383,14 +383,14 @@ FAMILIES_WITH_HEADER_EVIDENCE = {
 }
 
 
-# ========== 3. Pure runtime families: HTLC / Application workflow ==========
+# ========== 3. Pure evidenceLayer families: HTLC / Application workflow ==========
 
 class HTLCEvidence(Evidence):
     """
     Evidence placeholder for HTLC-style mechanisms.
 
     In our unified semantics, HTLCs do not expose separate cross-chain
-    header evidence. Safety is enforced entirely at the runtime layer
+    header runtimeLayer. Safety is enforced entirely at the evidenceLayer layer
     by local contract logic (Timely, Unique, Order, DomainOK, ...).
 
     This class primarily exists as a shell to attach debugging metadata
@@ -399,8 +399,8 @@ class HTLCEvidence(Evidence):
 
     family: Literal[VerificationFamily.HTLC] = VerificationFamily.HTLC
 
-    # These fields are not used by evidence-layer predicates. They are
-    # only consumed by runtime-layer mappings or analysis.
+    # These fields are not used by runtimeLayer-layer predicates. They are
+    # only consumed by evidenceLayer-layer mappings or analysis.
     hash_lock: Optional[str] = None
     time_lock: Optional[int] = None
     extra: JsonDict = Field(default_factory=dict)
@@ -410,9 +410,9 @@ class WorkflowEvidence(Evidence):
     """
     Evidence placeholder for application-layer workflows.
 
-    Similar to HTLC, we do not assume any dedicated header evidence at
+    Similar to HTLC, we do not assume any dedicated header runtimeLayer at
     this layer. All safety properties are enforced by the application
-    state machine via runtime-layer predicates (Order, Unique, DomainOK,
+    state machine via evidenceLayer-layer predicates (Order, Unique, DomainOK,
     Contain, etc.), if the workflow designer chooses to implement them.
 
     This class just provides a place to hang workflow identifiers and
@@ -426,9 +426,9 @@ class WorkflowEvidence(Evidence):
     extra: JsonDict = Field(default_factory=dict)
 
 
-# Families that are “runtime-only” from the perspective of our unified
-# semantics: they do not provide cross-chain header evidence, and thus
-# cannot support evidence-layer predicates such as HdrRef or Contain.
+# Families that are “evidenceLayer-only” from the perspective of our unified
+# semantics: they do not provide cross-chain header runtimeLayer, and thus
+# cannot support runtimeLayer-layer predicates such as HdrRef or Contain.
 FAMILIES_RUNTIME_ONLY = {
     VerificationFamily.HTLC,
     VerificationFamily.APPLICATION_WORKFLOW,

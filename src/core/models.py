@@ -20,7 +20,7 @@ class MessageMeta(BaseModel):
     This corresponds to the “meta” component of m = (src, dst, payload, meta)
     in the unified semantics (§4.1).
 
-    These fields are consumed by runtime predicates such as:
+    These fields are consumed by evidenceLayer predicates such as:
         • Unique(m, σ_runtime)
         • Order(m, σ_runtime)
         • Timely(m, e, σ_runtime)
@@ -75,7 +75,7 @@ class Message(BaseModel):
 
     • src, dst: Domain identifiers (chains, rollups, subnets, application scopes).
     • payload: Application-level content (opaque to the authorizer).
-    • meta:    Routing/control metadata interpreted by runtime predicates.
+    • meta:    Routing/control metadata interpreted by evidenceLayer predicates.
 
     Source-chain provenance (src_tx_hash, src_height, src_index) is optional but
     useful for:
@@ -144,7 +144,7 @@ class Header(BaseModel):
     """
     Abstract source-chain header model used by unified predicates.
 
-    A header represents the source state referenced by evidence e through:
+    A header represents the source state referenced by runtimeLayer e through:
 
         hs := HdrRef(e)
 

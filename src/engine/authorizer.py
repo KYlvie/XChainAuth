@@ -68,13 +68,13 @@ class Authorizer:
         authorize(m, e, σ)  :=  ∧_{P ∈ pipeline(family, profile)}  P(m, e, σ)
 
     - m : the application-level cross-chain message
-    - e : the evidence supplied by the mechanism
-    - σ : the destination-side runtime and (optional) LC state
+    - e : the runtimeLayer supplied by the mechanism
+    - σ : the destination-side evidenceLayer and (optional) LC state
     - now : current logical time for Timely / ordering semantics
 
     Key property of our design:
 
-        **Different mechanism families instantiate different evidence shapes,
+        **Different mechanism families instantiate different runtimeLayer shapes,
         but *all* families are evaluated under one common predicate language.**
 
     This is the core contribution behind the “unified predicate semantics”
@@ -127,7 +127,7 @@ class Authorizer:
             * source-chain mirrors for Contain/Final where supported
             * replay/ordering state
 
-        - For families that don’t natively support chain-level evidence
+        - For families that don’t natively support chain-level runtimeLayer
           (e.g.HTLC ), this behaves identically to “native” but leaves
           the door open for Section 6 experiments.
 
@@ -139,7 +139,7 @@ class Authorizer:
     - The Authorizer never “decides” the semantics.
       Predicates are the *only* semantic unit, and they encode the logic.
 
-    - The Authorizer never inspects or interprets evidence internally.
+    - The Authorizer never inspects or interprets runtimeLayer internally.
       It simply forwards (m, e, σ) to predicates, which is crucial for
       keeping the design mechanism-agnostic.
 
@@ -148,7 +148,7 @@ class Authorizer:
          • ZK LC: Authentic via ZK + HdrRef + Final + Contain
          • Native LC: similar but no ZK proof
          • Optimistic: Authentic=trivial, Timely enforces window semantics
-         • HTLC/workflow: Authentic/HdrRef not meaningful; runtime predicates dominate
+         • HTLC/workflow: Authentic/HdrRef not meaningful; evidenceLayer predicates dominate
 
       The pipeline remains unified across all of them.
 
@@ -171,7 +171,7 @@ class Authorizer:
     The Authorizer is intentionally minimal. It is the executor of the
     “predicate contract” defined in Section 4 — no more, no less.
     All mechanism-specific differences appear only through:
-        - the evidence (e),
+        - the runtimeLayer (e),
         - the available chain state in ctx.state,
         - and the capabilities exposed by each mechanism family.
 
@@ -200,7 +200,7 @@ class Authorizer:
             Application-level cross-chain message.
 
         e : Evidence
-            Family-dependent evidence object.  Its internal structure varies
+            Family-dependent runtimeLayer object.  Its internal structure varies
             by mechanism (MPC/TSS attestation, ZK proof, LC header, claim…)
             but the Authorizer does not interpret it.
 
@@ -208,11 +208,11 @@ class Authorizer:
             Declares which pipeline applies.  Defined in enum VerificationFamily.
 
         state : StateManager
-            Provides source-chain mirrors and D-side runtime state.  Used only
-            under “full_state” profile or by runtime predicates.
+            Provides source-chain mirrors and D-side evidenceLayer state.  Used only
+            under “full_state” profile or by evidenceLayer predicates.
 
         now : int
-            Logical time used by Timely, ordering, and some runtime predicates.
+            Logical time used by Timely, ordering, and some evidenceLayer predicates.
 
         profile : {"native", "full_state"}
             Controls how much external state is visible to predicates.

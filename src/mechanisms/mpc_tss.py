@@ -29,12 +29,12 @@ class MpcTssMechanism(Mechanism):
         1. Wrapping an application event `app_event` into a Message `m`.
         2. Constructing a committee attestation over (m, h_s) and embedding
            it into an MPCEvidence object `e`.
-        3. Updating the runtime state σ via the StateManager:
+        3. Updating the evidenceLayer state σ via the StateManager:
               - marking the message as seen (Unique),
-              - adding it to the inflight set (Contain-runtime approximation),
+              - adding it to the inflight set (Contain-evidenceLayer approximation),
               - advancing the per-route sequence counter (Order),
               - optionally relying on StateManager for routing policy (DomainOK).
-        4. Not constructing Merkle proofs or state-root-based evidence:
+        4. Not constructing Merkle proofs or state-root-based runtimeLayer:
            MPC/TSS bridges typically *do not* expose such proofs to the
            destination chain, so structural chain-level Contain/Final
            checks are not natively supported.

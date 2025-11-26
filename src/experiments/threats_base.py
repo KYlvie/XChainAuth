@@ -30,7 +30,7 @@ class ThreatId(str, Enum):
           the attack.
 
       - T2_DOMAIN_MISBIND
-          “Domain misbinding”: the evidence e is valid for some route or
+          “Domain misbinding”: the runtimeLayer e is valid for some route or
           domain (S', D', chan'), but is (re)used to authorize a message
           on a different (S, D, chan). This is the cross-domain confusion /
           misbinding threat.
@@ -49,7 +49,7 @@ class ThreatId(str, Enum):
 
       - T4_REPLAY_REUSE
           A more specific label for replay / reuse attacks where the *same*
-          evidence object e is intentionally re-used to authorize multiple
+          runtimeLayer object e is intentionally re-used to authorize multiple
           messages, or the same message multiple times, across different
           routes or epochs.
 
@@ -72,7 +72,7 @@ class ThreatId(str, Enum):
       - T6_CONTAINMENT
           “Containment” / “message–state binding” threats where a message is
           authorized without being properly contained in the state snapshot
-          that the evidence claims to represent (Merkle / batch opening does
+          that the runtimeLayer claims to represent (Merkle / batch opening does
           not actually bind m to the state_root under h_s).
 
     """
@@ -160,7 +160,7 @@ class ThreatScenario(ABC):
         Parameters:
           - state:
               An experiment StateManager instance (e.g. ExperimentalStateManager)
-              that acts as the runtime σ for this run. The scenario is free to
+              that acts as the evidenceLayer σ for this run. The scenario is free to
               mutate it to simulate:
                 * source-chain headers and finality,
                 * routing policy,

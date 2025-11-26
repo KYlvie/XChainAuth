@@ -199,7 +199,7 @@ class TimelyPredicate(Predicate):
                     name=self.name,
                     ok=False,
                     reason=(
-                        "Timely(OPTIMISTIC): dispute_window_end is missing in evidence."
+                        "Timely(OPTIMISTIC): dispute_window_end is missing in runtimeLayer."
                     ),
                     metadata={"now": now, "ttl": ttl_int},
                 )

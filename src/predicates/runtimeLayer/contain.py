@@ -24,13 +24,13 @@ class ContainPredicate(Predicate):
     IMPORTANT:
     - Whether this predicate executes is *not* decided here.
       The registry decides which predicates to include based on family+profile.
-    - Each verification family exposes its own evidence structure, so field names
+    - Each verification family exposes its own runtimeLayer structure, so field names
       may differ (leaf, leaf_hash, payload_hash, commitment, etc.).
       We therefore implement a flexible field-mapping strategy.
 
     Families:
       • MPC/TSS — normally cannot prove inclusion, but if the registry chooses to
-        activate Contain, we assume a Merkle proof exists in evidence.
+        activate Contain, we assume a Merkle proof exists in runtimeLayer.
       • ZK Light Client — containment implicitly proven by the ZK circuit; if
         explicit Merkle proof fields exist, verify them.
       • Native Light Client — classic state_root + Merkle proof.
@@ -125,7 +125,7 @@ class ContainPredicate(Predicate):
             return PredicateResult(
                 name=self.name,
                 ok=False,
-                reason="Contain: cannot resolve state_root from evidence.",
+                reason="Contain: cannot resolve state_root from runtimeLayer.",
             )
 
         # --------------------------------------------------------------
@@ -149,7 +149,7 @@ class ContainPredicate(Predicate):
         # 1) MPC/TSS (ME-derived containment only)
         # ------------------------------------------------------------------
         if family == VerificationFamily.MPC_TSS:
-            # In reality, MPC evidence does not contain Merkle proofs.
+            # In reality, MPC runtimeLayer does not contain Merkle proofs.
             # If registry has activated Contain, we assume proof exists.
             if proof is None:
                 return PredicateResult(
@@ -157,7 +157,7 @@ class ContainPredicate(Predicate):
                     ok=False,
                     reason=(
                         "Contain(MPC): expecting Merkle proof, "
-                        "but no proof fields found in evidence."
+                        "but no proof fields found in runtimeLayer."
                     ),
                 )
             ok = verify_merkle_proof(leaf_hash, proof, state_root)

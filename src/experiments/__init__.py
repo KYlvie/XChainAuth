@@ -39,7 +39,7 @@ def make_experimental_state_manager_for_family(
     Design:
       - Attach a simulated source chain S (currently fixed to "chain-A").
       - Let ExperimentalStateManager mirror headers/finality from S.
-      - Store destination-side runtime state (seen/seq/routes) in the same object.
+      - Store destination-side evidenceLayer state (seen/seq/routes) in the same object.
       - Predicates (Final, Contain, DomainOK, ...) decide how to use this state.
     """
     state = ExperimentalStateManager()

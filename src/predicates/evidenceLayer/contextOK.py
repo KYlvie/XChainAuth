@@ -30,8 +30,8 @@ class ContextOKPredicate(Predicate):
 
     High-level intent.
     ------------------
-    This predicate checks *context soundness* of the evidence object e.
-    It enforces that evidence is bound to the correct operational context
+    This predicate checks *context soundness* of the runtimeLayer object e.
+    It enforces that runtimeLayer is bound to the correct operational context
     so that it cannot be replayed across epochs, schemas, or channels.
 
     In the unified semantics (§4.2), ContextOK(e) corresponds to:
@@ -62,7 +62,7 @@ class ContextOKPredicate(Predicate):
 
       - Other families:
             ContextOK is treated as a no-op success, since they do not have
-            a stable evidence-level context in our current model.
+            a stable runtimeLayer-level context in our current model.
 
     Required fields (if context is present):
         - nonce         (existence only, for AntiReplayOK later)
@@ -256,7 +256,7 @@ class ContextOKPredicate(Predicate):
                     ok=False,
                     reason=(
                         "ContextOK(OPT): no suitable context map found. "
-                        "Expected fields in evidence.meta['context'] or "
+                        "Expected fields in runtimeLayer.meta['context'] or "
                         "claim.data['context'] (or directly in those maps)."
                     ),
                     metadata={"family": family.value},
@@ -280,7 +280,7 @@ class ContextOKPredicate(Predicate):
                     ok=False,
                     reason=(
                         "ContextOK(ZK): no suitable context map found. "
-                        "Expected fields in evidence.meta['context'] or "
+                        "Expected fields in runtimeLayer.meta['context'] or "
                         "public_inputs['context'] (or directly in those maps)."
                     ),
                     metadata={"family": family.value},
@@ -348,7 +348,7 @@ class ContextOKPredicate(Predicate):
                 source_label="Native LC chain-context (StateManager)",
             )
 
-        # 5) Other families: currently no evidence-level context notion
+        # 5) Other families: currently no runtimeLayer-level context notion
         return PredicateResult(
             name=self.name,
             ok=True,

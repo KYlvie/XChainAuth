@@ -10,7 +10,7 @@ class DomainBindPredicate(Predicate):
     DomainBind(m, e):
 
     Unified intuition:
-      - The evidence e must be bound to the *same logical route* as the
+      - The runtimeLayer e must be bound to the *same logical route* as the
         message m.
       - Our rules:
           * src / dst are mandatory and must match;
@@ -26,7 +26,7 @@ class DomainBindPredicate(Predicate):
 
     name = PredicateName.DOMAIN_BIND
     layer = PredicateLayer.EVIDENCE
-    description = "Check that evidence is bound to the same logical route/domain as m."
+    description = "Check that runtimeLayer is bound to the same logical route/domain as m."
 
     # Which extra route fields we try to align if present
     OPTIONAL_FIELDS: Tuple[str, ...] = (
@@ -70,7 +70,7 @@ class DomainBindPredicate(Predicate):
 
     def _route_from_evidence(self, ctx: PredicateContext) -> Dict[str, Any]:
         """
-        Extract a 'route view' from the evidence e.
+        Extract a 'route view' from the runtimeLayer e.
 
         For now we treat families as follows:
           - MPC_TSS: route comes from attestation.payload (if provided)
@@ -158,12 +158,12 @@ class DomainBindPredicate(Predicate):
 
         # ---- 4) NATIVE_LIGHT_CLIENT: usually route is known out-of-band ----
         if isinstance(e, NativeLightClientEvidence):
-            # Most native LC evidence only tells us "this header hs is valid";
+            # Most native LC runtimeLayer only tells us "this header hs is valid";
             # the route policy is configured on D. We therefore keep src/dst
             # as None here and rely on DomainOK or configuration, not e.
             return route
 
-        # ---- 5) Other families / runtime-only evidence: no route in e ----
+        # ---- 5) Other families / evidenceLayer-only runtimeLayer: no route in e ----
         return route
 
     def evaluate(self, ctx: PredicateContext) -> PredicateResult:
@@ -177,14 +177,14 @@ class DomainBindPredicate(Predicate):
 
         # ---------- 1) mandatory src/dst ----------
 
-        # src must exist on evidence and equal m.src
+        # src must exist on runtimeLayer and equal m.src
         if e_route["src"] is None or e_route["dst"] is None:
             # According to your rule: src/dst MUST be bound by the mechanism.
             return PredicateResult(
                 name=self.name,
                 ok=False,
                 reason=(
-                    "DomainBind: evidence does not bind src/dst explicitly; "
+                    "DomainBind: runtimeLayer does not bind src/dst explicitly; "
                     "src/dst are mandatory for domain binding."
                 ),
                 metadata={
@@ -208,7 +208,7 @@ class DomainBindPredicate(Predicate):
                 name=self.name,
                 ok=False,
                 reason=(
-                    "DomainBind: src/dst mismatch between message and evidence "
+                    "DomainBind: src/dst mismatch between message and runtimeLayer "
                     f"({', '.join(mismatched)} differ)."
                 ),
                 metadata={

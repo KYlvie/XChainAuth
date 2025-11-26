@@ -14,7 +14,7 @@ class OrderPredicate(Predicate):
     Intended semantics (for future implementation):
       - Fix a "route" for the message, e.g.
           route = (src_chain, dst_chain, channel, bridge_id, app_id, ...)
-      - The StateManager maintains a runtime view σ_D that stores, for each route,
+      - The StateManager maintains a evidenceLayer view σ_D that stores, for each route,
         the expected next sequence number (or a more complex ordering state).
       - Order(m, e) should enforce that:
           * m.meta.seq is consistent with this per-route ordering policy:

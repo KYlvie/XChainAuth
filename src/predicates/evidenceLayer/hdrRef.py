@@ -8,14 +8,14 @@ class HdrRefPredicate(Predicate):
 
         High-level intent.
         ------------------
-        This predicate checks that the evidence e actually carries a *well-formed
+        This predicate checks that the runtimeLayer e actually carries a *well-formed
         header reference* h_s, and that this header is consistent with the claimed
         source domain of the message m.
 
         Intuition.
         ----------
         Many cross-chain mechanism families embed, directly or indirectly, a
-        reference to a source-chain header in their evidence object e. We denote
+        reference to a source-chain header in their runtimeLayer object e. We denote
         this abstractly by a function HdrRef(e), which should return a header h_s
         if the family uses one, or ⊥ if there is no such notion.
         HdrRefPredicate enforces a minimal sanity condition:
@@ -27,7 +27,7 @@ class HdrRefPredicate(Predicate):
         Scope of responsibility.
         ------------------------
         - This predicate *does*:
-            • ensure that evidence e really points to some header h_s;
+            • ensure that runtimeLayer e really points to some header h_s;
             • ensure that h_s belongs to the same chain that m claims to
               originate from (chain_id == m.src);
             • perform basic structural sanity checks on h_s (here: height ≥ 0).
@@ -42,7 +42,7 @@ class HdrRefPredicate(Predicate):
         ---------------------------------
         HdrRefPredicate is a lightweight “typing + routing” guard on the header
         reference inside e. It ensures that when downstream predicates (Authentic,
-        DomainBind, Final) talk about “the header h_s carried in the evidence”,
+        DomainBind, Final) talk about “the header h_s carried in the runtimeLayer”,
         there really is such a header, and that it is aligned with m.src at the
         level of chain identifiers and basic structure.
         """
@@ -60,7 +60,7 @@ class HdrRefPredicate(Predicate):
             return PredicateResult(
                 name=self.name,
                 ok=False,
-                reason="HdrRef: HdrRef(e) = ⊥ (no header in evidence).",
+                reason="HdrRef: HdrRef(e) = ⊥ (no header in runtimeLayer).",
             )
 
         # the header’s chain_id must match the message’s source chain m.src;

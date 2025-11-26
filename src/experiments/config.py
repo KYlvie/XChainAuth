@@ -69,7 +69,7 @@ class ExperimentalStateManager(InMemoryStateManager):
         - state.get_header_view(chain_id, height)
         - state.is_final_header(header)
 
-    while still reusing all the generic destination-side runtime bookkeeping
+    while still reusing all the generic destination-side evidenceLayer bookkeeping
     (seen messages, per-route ordering, routing policy, inflight set, etc.).
     """
 

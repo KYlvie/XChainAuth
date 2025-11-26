@@ -13,8 +13,8 @@ class AuthenticPredicate(Predicate):
         High-level intent.
         ------------------
         This predicate is the family-native *cryptographic authenticity* check for
-        a single (message, evidence) pair (m, e). Given a PredicateContext ctx, it
-        decides whether the evidence object e is a valid, family-specific proof
+        a single (message, runtimeLayer) pair (m, e). Given a PredicateContext ctx, it
+        decides whether the runtimeLayer object e is a valid, family-specific proof
         that “someone trustworthy really attested to the claimed source-chain
         state or message”.
 
@@ -30,7 +30,7 @@ class AuthenticPredicate(Predicate):
         - It deliberately does NOT decide:
             • whether the source state is final or could still be reverted;
             • whether m is correctly bound to the right domain / route;
-            • whether the evidence is fresh enough or within a time bound;
+            • whether the runtimeLayer is fresh enough or within a time bound;
             • whether the message is still “live” in the application workflow.
           Those concerns are handled by other predicates such as Final, DomainBind,
           Timely, Contain, etc.
@@ -45,21 +45,21 @@ class AuthenticPredicate(Predicate):
             - VerificationFamily.ZK_LIGHT_CLIENT:
                 calls GlobalZkVerifier on (proof, public_inputs).
             - VerificationFamily.NATIVE_LIGHT_CLIENT:
-                compares the header carried in the evidence against a canonical
+                compares the header carried in the runtimeLayer against a canonical
                 header returned by ctx.state.get_header_view(...).
             - VerificationFamily.OPTIMISTIC:
                 checks that an aggregator signature over a commitment is valid
                 using OptimisticVerifier.
 
         For mechanism families that do not expose a meaningful cross-chain
-        cryptographic evidence object (e.g., HTLC or pure application workflows),
+        cryptographic runtimeLayer object (e.g., HTLC or pure application workflows),
         AuthenticPredicate currently acts as a no-op and returns ok=True, with the
-        understanding that their safety is enforced by runtime predicates and the
+        understanding that their safety is enforced by evidenceLayer predicates and the
         end-to-end protocol design rather than by a standalone Authentic(e) check.
         """
     name = PredicateName.AUTHENTIC
     layer = PredicateLayer.EVIDENCE
-    description = "Family-native cryptographic verification of evidence e."
+    description = "Family-native cryptographic verification of runtimeLayer e."
 
     def evaluate(self, ctx: PredicateContext) -> PredicateResult:
         family = ctx.family
@@ -102,7 +102,7 @@ class AuthenticPredicate(Predicate):
                 return PredicateResult(
                     name=self.name,
                     ok=False,
-                    reason="Authentic(MPC): HdrRef(e) = ⊥, no header in evidence.",
+                    reason="Authentic(MPC): HdrRef(e) = ⊥, no header in runtimeLayer.",
                 )
 
             registry: Optional[CommitteeVerifierRegistry] = ctx.params.get(
@@ -219,20 +219,20 @@ class AuthenticPredicate(Predicate):
         #      We deliberately *do not* encode finality depth, fork-choice, or
         #      time-related properties here; those are the responsibility of
         #      predicates such as Final and Timely. Authentic(NLC) focuses
-        #      only on consistency between the evidence header and the
+        #      only on consistency between the runtimeLayer header and the
         #      simulated chain view.
         # ------------------------------------------------------------------
 
         if family == VerificationFamily.NATIVE_LIGHT_CLIENT:
             assert isinstance(ctx.e, NativeLightClientEvidence)
             e = ctx.e
-            hs_e = e.header  # from evidence claimed header
+            hs_e = e.header  # from runtimeLayer claimed header
 
             if hs_e is None:
                 return PredicateResult(
                     name=self.name,
                     ok=False,
-                    reason="Authentic(NLC): evidence.header is None.",
+                    reason="Authentic(NLC): runtimeLayer.header is None.",
                 )
 
             # Here we assume that StateManager provides a method get_header_view(chain_id, height)
@@ -351,7 +351,7 @@ class AuthenticPredicate(Predicate):
                     name=self.name,
                     ok=False,
                     reason=(
-                        "Authentic(OPT): evidence missing commitment and/or signature."
+                        "Authentic(OPT): runtimeLayer missing commitment and/or signature."
                     ),
                 )
 
@@ -374,9 +374,9 @@ class AuthenticPredicate(Predicate):
                 },
             )
         # ------------------------------------------------------------------
-        # 5) Other families (runtime-only or not implemented):
+        # 5) Other families (evidenceLayer-only or not implemented):
         #    For families that do not have a meaningful cryptographic
-        #    cross-chain evidence object (e.g., pure HTLC-style workflows or
+        #    cross-chain runtimeLayer object (e.g., pure HTLC-style workflows or
         #    application-layer protocols without a dedicated header+proof
         #    structure), Authentic is treated as a no-op: we return ok=True
         #    and delegate all safety obligations to other predicates.
@@ -384,15 +384,15 @@ class AuthenticPredicate(Predicate):
         #    Typical examples include:
         #      - HTLC: correctness depends on hash preimage secrecy and the
         #        atomicity of contract workflows across chains, rather than
-        #        a standalone “evidence” object that can be verified in
+        #        a standalone “runtimeLayer” object that can be verified in
         #        isolation.
         #      - APPLICATION_WORKFLOW: cross-chain semantics are enforced by
         #        coordinated application logic, off-chain relayers, and local
-        #        checks on each chain, again without an independent evidence
+        #        checks on each chain, again without an independent runtimeLayer
         #        artifact.
         #
         #    In such families, security properties like atomicity,
-        #    containment, and liveness are captured by runtime predicates
+        #    containment, and liveness are captured by evidenceLayer predicates
         #    (Contain, Timely, etc.) and by the end-to-end protocol design,
         #    not by a family-native Authentic(e) checker.
         # ------------------------------------------------------------------

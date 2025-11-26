@@ -24,7 +24,7 @@ class ZkLightClientMechanism(Mechanism):
           * `proof`: a (simulated) ZK proof object;
           * `public_inputs`: the committed header / payload data the proof
             is supposed to attest to;
-      - Write runtime state into σ (StateManager):
+      - Write evidenceLayer state into σ (StateManager):
           * replay / Unique state via mark_message_seen();
           * per-route ordering via advance_seq(route, seq);
           * (optionally) inflight tracking via add_inflight().
@@ -76,7 +76,7 @@ class ZkLightClientMechanism(Mechanism):
     ) -> Tuple[Message, ZKLightClientEvidence]:
         """
         Package an application event `app_event` into (m, e) for the
-        ZK light-client family, and update runtime σ.
+        ZK light-client family, and update evidenceLayer σ.
 
         Expected `app_event` fields (informal contract):
           - "payload": dict          → application-level payload

@@ -23,12 +23,12 @@ class PredicateLayer(str, Enum):
     We conceptually separate predicates into two layers:
 
       * EVIDENCE:
-          Predicates that only inspect the evidence object `e` and
+          Predicates that only inspect the runtimeLayer object `e` and
           information that is directly bound to it (e.g. headers,
           signatures, ZK proofs, committee attestations).
 
       * RUNTIME:
-          Predicates that additionally depend on mutable runtime state σ
+          Predicates that additionally depend on mutable evidenceLayer state σ
           on the destination chain (managed by StateManager). Examples:
           replay protection, ordering, domain policy, time windows.
 
@@ -36,8 +36,8 @@ class PredicateLayer(str, Enum):
     enforce any behavior by itself.
     """
 
-    EVIDENCE = "evidence"
-    RUNTIME = "runtime"
+    EVIDENCE = "runtimeLayer"
+    RUNTIME = "evidenceLayer"
 
 
 class PredicateContext(BaseModel):
@@ -78,11 +78,11 @@ class PredicateContext(BaseModel):
     )
 
     # Runtime environment: may be None if a test runs purely
-    # evidence-layer predicates without any σ-based checks.
+    # runtimeLayer-layer predicates without any σ-based checks.
     state: Optional[StateManager] = Field(
         ...,
         description=(
-            "Destination-side state manager σ, used by runtime predicates "
+            "Destination-side state manager σ, used by evidenceLayer predicates "
             "to access finality, replay, ordering, and policy information."
         ),
     )

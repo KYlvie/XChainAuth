@@ -10,14 +10,14 @@ Mechanism:
   - OptimisticMechanism.build_message_and_evidence(...)
     which in our model:
       * constructs a Message m for an application event;
-      * produces some optimistic evidence e (e.g. state root + message root,
+      * produces some optimistic runtimeLayer e (e.g. state root + message root,
         plus information about a dispute window, bonds, etc.);
-      * updates runtime σ:
+      * updates evidenceLayer σ:
             - mark_message_seen(MessageKey.from_message(m))
             - add_inflight(key, header_like_view)
             - advance_seq(route, seq)
 
-We do NOT rely on any particular internal shape of the evidence. We only
+We do NOT rely on any particular internal shape of the runtimeLayer. We only
 assume that:
   - SAFE samples use the mechanism to generate (m, e) on a given header;
   - ATTACK samples either:
@@ -69,7 +69,7 @@ class OptimisticThreat1InclusionScenario(ThreatScenario):
     T1_INCLUSION: Inclusion failure for Optimistic bridges.
 
     Optimistic intuition:
-      - A "prover" posts an optimistic claim (evidence e) about some
+      - A "prover" posts an optimistic claim (runtimeLayer e) about some
         source state h_s. If no one challenges within a dispute window,
         D accepts (m, e) as if m were correctly included under h_s.
 
@@ -80,7 +80,7 @@ class OptimisticThreat1InclusionScenario(ThreatScenario):
       - ATTACK:
           • An attacker forges a different m_attack that was never
             recorded as inflight under h_s on S.
-          • They reuse the same optimistic evidence e_safe.
+          • They reuse the same optimistic runtimeLayer e_safe.
           • Contain(m, σ_chain / σ_runtime) should accept SAFE and
             reject ATTACK.
 
@@ -160,7 +160,7 @@ class OptimisticThreat2DomainMisbindScenario(ThreatScenario):
     T2_DOMAIN_MISBIND: Domain misbinding for Optimistic bridges.
 
     Intuition:
-      - OPTIMISTIC evidence e itself often does not fix the (dst, channel)
+      - OPTIMISTIC runtimeLayer e itself often does not fix the (dst, channel)
         domain; routing is handled by application / relayer logic.
       - If the Authorizer does not check DomainOK(m, σ_runtime), then the
         same optimistic claim can be abused to deliver m into a wrong
@@ -218,7 +218,7 @@ class OptimisticThreat2DomainMisbindScenario(ThreatScenario):
             state=state,
         )
 
-        # ATTACK: same evidence, but dst changed to chain-C
+        # ATTACK: same runtimeLayer, but dst changed to chain-C
         meta_attack = MessageMeta(
             seq=m_safe.meta.seq,
             ttl=m_safe.meta.ttl,

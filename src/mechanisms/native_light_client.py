@@ -50,7 +50,7 @@ class NativeLightClientMechanism(Mechanism):
     ) -> Tuple[Message, NativeLightClientEvidence]:
         """
         Package an application event `app_event` into (m, e) for the
-        Native Light Client family, and update runtime σ.
+        Native Light Client family, and update evidenceLayer σ.
 
         Expected `app_event` fields (informal contract):
           - "payload": dict           → application-level payload

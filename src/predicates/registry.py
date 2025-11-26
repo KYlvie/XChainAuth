@@ -1,16 +1,16 @@
 from __future__ import annotations
 from core.enums import PredicateName, VerificationFamily
 from predicates.base import Predicate
-from predicates.evidence.contain import ContainPredicate
-from predicates.evidence.domainOK import DomainOKPredicate
-from predicates.evidence.final import FinalPredicate
-from predicates.evidence.order import OrderPredicate
-from predicates.evidence.timely import TimelyPredicate
-from predicates.evidence.unique import UniquePredicate
-from predicates.runtime.authentic import AuthenticPredicate
-from predicates.runtime.contextOK import ContextOKPredicate
-from predicates.runtime.domainBind import DomainBindPredicate
-from predicates.runtime.hdrRef import HdrRefPredicate
+from predicates.runtimeLayer.contain import ContainPredicate
+from predicates.runtimeLayer.domainOK import DomainOKPredicate
+from predicates.runtimeLayer.final import FinalPredicate
+from predicates.runtimeLayer.order import OrderPredicate
+from predicates.runtimeLayer.timely import TimelyPredicate
+from predicates.runtimeLayer.unique import UniquePredicate
+from predicates.evidenceLayer.authentic import AuthenticPredicate
+from predicates.evidenceLayer.contextOK import ContextOKPredicate
+from predicates.evidenceLayer.domainBind import DomainBindPredicate
+from predicates.evidenceLayer.hdrRef import HdrRefPredicate
 """
 Predicate registry and capability matrix.
 
@@ -48,7 +48,7 @@ argument in `get_pipeline_for_family`:
         native capability (according to the matrix below).
     - profile="full_stack":
         Run the full conceptual stack of ten predicates
-        (evidence layer + runtime layer), in their canonical
+        (runtimeLayer layer + evidenceLayer layer), in their canonical
         order, regardless of whether the family has native support.
         This is useful for “hardened semantics” experiments.
 
@@ -101,7 +101,7 @@ def _make_pred(name: PredicateName) -> Predicate:
 # ================================================================
 # 2) Canonical predicate order
 #    This gives a single, canonical ordering of the ten predicates:
-#    first the evidence-layer, then the runtime layer.
+#    first the runtimeLayer-layer, then the evidenceLayer layer.
 # ================================================================
 
 CANONICAL_ORDER: List[PredicateName] = [
@@ -225,8 +225,8 @@ FAMILY_NATIVE_CAPABILITIES: Dict[VerificationFamily, List[PredicateName]] = {
     # ------------------------------------------------------------
     # HTLC family (hash time-locked contracts)
     # ------------------------------------------------------------
-    # HTLCs do *not* provide evidence-layer predicates: there is no
-    # cross-chain header evidence, only local contracts on A and B.
+    # HTLCs do *not* provide runtimeLayer-layer predicates: there is no
+    # cross-chain header runtimeLayer, only local contracts on A and B.
     #
     # Runtime-layer:
     #   - Unique(m):  the hash_lock effectively acts as a one-time token;
@@ -244,10 +244,10 @@ FAMILY_NATIVE_CAPABILITIES: Dict[VerificationFamily, List[PredicateName]] = {
     # ------------------------------------------------------------
     # Application-layer workflow family
     # ------------------------------------------------------------
-    # For generic application workflows, there is no standardized evidence
+    # For generic application workflows, there is no standardized runtimeLayer
     # object; all safety properties live in the application state machine.
     #
-    # In principle, many runtime-layer predicates can be realized:
+    # In principle, many evidenceLayer-layer predicates can be realized:
     #   - Unique(m):   via a seen(messageId) mapping.
     #   - Timely(m,e): via application-level TTL / expiry rules.
     #   - Order(m):    via workflow steps or per-channel sequence.
@@ -291,18 +291,18 @@ FAMILY_NATIVE_CAPABILITIES: Dict[VerificationFamily, List[PredicateName]] = {
 #               (e.g., get_header_view(...), get_message_context(...),
 #               lookup_inclusion_proof(...), routing policy tables, etc.).
 #
-#          2) Via evidence enrichment:
+#          2) Via runtimeLayer enrichment:
 #               When the real protocol could plausibly carry additional
 #               context without changing its fundamental architecture,
 #               we model a “hardened” version of the family by explicitly
-#               adding those fields into the evidence object e
+#               adding those fields into the runtimeLayer object e
 #               (e.g., adding a context map with nonce/seq/channel/TTL,
 #               or embedding route tuples into claim/public_inputs).
 #
 #        In other words, the full_stack profile evaluates what the family
 #        would look like if it were upgraded to satisfy the unified
 #        authorization semantics, using StateManager and
-#        enriched evidence as idealized interfaces for the missing data.
+#        enriched runtimeLayer as idealized interfaces for the missing data.
 #        This is useful for capability analysis and “what-if” hardening
 #        experiments, not as a literal description of every deployed
 #        bridge today.

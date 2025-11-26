@@ -53,7 +53,7 @@ class HeaderView:
 
 class StateManager(ABC):
     """
-    Abstract interface for the state σ used by runtime-layer predicates.
+    Abstract interface for the state σ used by evidenceLayer-layer predicates.
 
     In the unified predicate semantics (§4.2), σ is the conceptual
     destination-side state used to evaluate predicates such as:
@@ -73,7 +73,7 @@ class StateManager(ABC):
             Stored as (chain_id, height) → HeaderView.
             Used by Final and Contain predicates.
 
-        (2) σ_runtime: Local runtime bookkeeping maintained by the
+        (2) σ_runtime: Local evidenceLayer bookkeeping maintained by the
             Authorizer on the destination side, including:
                 - processed message set (Unique)
                 - per-route sequence expectations (Order)
@@ -122,7 +122,7 @@ class StateManager(ABC):
         Returns None if this header has never been observed.
 
         Predicates use this to:
-            - Compare evidence-provided headers with mirrored headers.
+            - Compare runtimeLayer-provided headers with mirrored headers.
             - Reconstruct the chain view relevant to HdrRef(e).
         """
         raise NotImplementedError
@@ -210,7 +210,7 @@ class StateManager(ABC):
         raise NotImplementedError
 
     # --------------------------------------------------------------
-    # 1.5 Inflight API (Contain predicate — runtime variant)
+    # 1.5 Inflight API (Contain predicate — evidenceLayer variant)
     # --------------------------------------------------------------
 
     @abstractmethod
@@ -218,7 +218,7 @@ class StateManager(ABC):
         """
         Mark a message as inflight at a given header.
 
-        This API is useful for runtime-only containment (e.g., workflow messages).
+        This API is useful for evidenceLayer-only containment (e.g., workflow messages).
         """
         raise NotImplementedError
 
@@ -294,7 +294,7 @@ class InMemoryStateManager(StateManager):
     Internal structure:
         _headers:      (chain_id, height) → HeaderView
         _seen:         set[str]                  (Unique)
-        _inflight:     set[(canon_key, (cid,h))] (Contain-runtime)
+        _inflight:     set[(canon_key, (cid,h))] (Contain-evidenceLayer)
         _next_seq:     dict[RouteTuple, int]     (Order)
         _allowed_routes: Optional[set[RouteTuple]]
     """
