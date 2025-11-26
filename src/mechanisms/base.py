@@ -1,23 +1,26 @@
-# src/mechanisms/base.py
-from __future__ import annotations
-
 import json
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple
+from abc import abstractmethod, ABC
+from typing import Any, Tuple, Dict
 
 from core.enums import VerificationFamily
-from core.models import Message
 from core.evidence import Evidence
+from core.models import Message
 from core.state import StateManager
 
 
 class Mechanism(ABC):
     """
-    抽象的跨链机制接口。
+    Abstract interface for all cross-chain mechanism families.
 
-    每个 family 的实现负责：
-      - 知道自己属于哪个 VerificationFamily
-      - 知道如何从源链上的“应用事件”构造统一的 (Message, Evidence)
+    Each mechanism implementation is responsible for:
+      - Declaring which VerificationFamily it belongs to;
+      - Knowing how to translate a source-chain “application event” into the
+        unified (Message, Evidence) pair used by the Authorizer pipeline.
+
+    The goal of this interface is to normalize the shape of cross-chain messages
+    across heterogeneous mechanism families (MPC/TSS, Optimistic, ZK LC,
+    Native LC, HTLC, Workflow, etc.), while allowing each family to embed its
+    native cryptographic or protocol-specific evidence structure.
     """
 
     family: VerificationFamily
@@ -33,22 +36,36 @@ class Mechanism(ABC):
         extra: Dict[str, Any] | None = None,
     ) -> Tuple[Message, Evidence]:
         """
-        从源链上的应用事件构造 (Message, Evidence)。
+        Construct the unified (Message, Evidence) pair from a source-chain
+        application event.
 
-        参数：
-          - src_chain_id, dst_chain_id: 源 / 目的链 ID
-          - app_event: “应用事件”，格式由具体 family 自己约定
-          - state: StateManager（可以在里面登记 header、finality 等）
-          - extra: family 特有的旋钮 / 参数（可选）
+        Arguments:
+          - src_chain_id, dst_chain_id:
+                Identifiers of the source/destination chains.
+          - app_event:
+                Raw application-layer event emitted by the source chain.
+                The expected structure is family-specific.
+          - state:
+                The StateManager instance, which may be updated with runtime
+                information such as header views, inflight messages,
+                finality information, replay state, etc.
+          - extra:
+                Optional family-specific configuration knobs.
 
-        返回：
-          - m: 统一的 Message 模型
-          - e: family 特有的 Evidence 子类
+        Returns:
+          - m: A unified Message object that is independent of mechanism family.
+          - e: A family-specific Evidence object capturing the cryptographic
+               or protocol-level justification carried by this mechanism.
         """
         raise NotImplementedError
 
     @staticmethod
     def _canonical_json(obj: Any) -> str:
+        """
+        Serialize an object (including pydantic models) into canonical JSON.
+        This is used to ensure deterministic hashing across runs and is shared
+        by several mechanism families when deriving commitments or signatures.
+        """
         data = obj
         if hasattr(obj, "model_dump"):
             data = obj.model_dump(mode="json")
