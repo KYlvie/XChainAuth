@@ -22,7 +22,7 @@ class OptimisticMechanism(Mechanism):
       - Set a dispute window end (height or timestamp) for Timely(m, e):
           * either taken directly from app_event["dispute_window_end"], or
           * derived from timestamp + window_length;
-      - Write evidenceLayer state into σ (StateManager):
+      - Write runtime state into σ (StateManager):
           * replay / Unique state via mark_message_seen();
           * inflight(m, h_s) via add_inflight();
           * per-route ordering via advance_seq(route, seq).
@@ -52,7 +52,7 @@ class OptimisticMechanism(Mechanism):
     ) -> Tuple[Message, OptimisticEvidence]:
         """
         Package an application event `app_event` into (m, e) for the
-        Optimistic family, and update evidenceLayer σ.
+        Optimistic family, and update runtime σ.
 
         Expected `app_event` fields (informal contract):
           - "payload": dict           → application-level payload
@@ -75,7 +75,7 @@ class OptimisticMechanism(Mechanism):
 
         Notes:
           - We do *not* check fraud proofs here. Fraud proofs are tracked
-            at evidenceLayer in the StateManager (e.g. via record_fraud_proof)
+            at runtime in the StateManager (e.g. via record_fraud_proof)
             and consumed by Timely(OPTIMISTIC).
           - We treat height/timestamp as a single scalar timeline for
             simplicity: Timely decides how to interpret them.
@@ -165,27 +165,4 @@ class OptimisticMechanism(Mechanism):
             dispute_window_end=dispute_window_end,
             meta=extra or {},
         )
-
-        # --------------------------------------------------
-        # 7. Update evidenceLayer σ (StateManager)
-        # --------------------------------------------------
-
-        # 7.1 replay / Unique state
-        key = MessageKey.from_message(m)
-        state.mark_message_seen(key)
-
-        # 7.2 inflight set
-        #     For optimistic mechanisms, containment is defined at the level
-        #     of "claim accepted after dispute window". We still record the
-        #     (m, header) pair as inflight so that Contain / Final predicates
-        #     can reason about current status if needed.
-        if header is not None:
-            state.add_inflight(key, header)
-
-        # 7.3 per-route sequence / ordering
-        state.advance_seq(route, seq)
-
-        # --------------------------------------------------
-        # 8. Return (m, e)
-        # --------------------------------------------------
         return m, e
